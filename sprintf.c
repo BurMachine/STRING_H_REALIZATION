@@ -67,16 +67,36 @@ char *int_to_buf(char *buf, int is_int, long int n, char flag, char flag3, int w
         *(buf++) = '0';
         buf -= j;
     }
-    while (n != 0) {  // непосредственно вывод самого числа
-        *(buf + j + len - i - 1) = (n % 10) | '0';
-        n /= 10;
-        i++;
+    if (n + 2 == LONG_MIN + 2) {
+        n += 2;
+        n = (-1)*n;
+        *(buf + j + len - i - 1) = '8';
+        int flag1 = 1;
+        while (n != 0) {
+            if (flag1 == 1){
+                flag1 = 0;
+                n /= 10;
+                i++;
+                continue;
+            }
+            *(buf + j + len - i - 1) = (n % 10) | '0';
+            n /= 10;
+            i++;
+        }
+
+    } else {
+        while (n != 0) {  // непосредственно вывод самого числа
+            *(buf + j + len - i - 1) = (n % 10) | '0';
+            n /= 10;
+            i++;
+        }
     }
-    if (is_int == 1)
+    if (is_int == 1) {
         for (int h = 0; h < toch - tr_len; h++) {  // а это, если задана точность, вывод дополнительных нулей
             *(buf + j + len - i - 1) = '0';
             i++;
         }
+    }
 
     if (flag3 == '-' && width != -1 &&
         is_int == 1) {  // если флаг - и задана ширина, то после числа пробелы печатаем
@@ -138,6 +158,7 @@ int s21_sprintf(char *str_in, const char *format, ...) {
     tok.lenght = -1;
 
     int flag;
+    int null_flag;
     int str_len = 0;
     char *str;
     str = calloc(str_len, str_len * sizeof(char));
@@ -145,6 +166,7 @@ int s21_sprintf(char *str_in, const char *format, ...) {
     // \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\//
     for (int form = 0; form < (int)strlen(format); form++) {
         flag = 0;
+        null_flag = 0;
         tok.flag1 = -1;
         tok.flag3 = -1;
         tok.width = -1;
@@ -210,15 +232,26 @@ int s21_sprintf(char *str_in, const char *format, ...) {
             form += 2;
         }
 
+        if (format[form] == '.' && (format[form + 1] < 48 || format[form + 1] > 57)  && format[form + 1] != '*') {
+            ++form;
+            null_flag = 1;
+        }
+
         if (format[form] == 'h' || format[form] == 'l') {
             tok.lenght = format[form];
             ++form;
         }
-
         // ***//***//***//***//***//***//***//***//***//***//***//***//***//***//
-        if (flag == 1){
+        if (flag == 1) {
+
             --form;
         }
+        if (null_flag == 1) {
+            continue;
+        }
+        // ***//***//***//***//***//***//***//***//***//***//***//***//***//***//
+        // ***//***//***//***//***//***//***//***//***//***//***//***//***//***//
+        // ***//***//***//***//***//***//***//***//***//***//***//***//***//***//
         switch (format[form]) {  // Спецификаторы
             case 'c': {
                 char new_arg;
@@ -341,7 +374,7 @@ int s21_sprintf(char *str_in, const char *format, ...) {
             }
 
             case 's': {
-                char *arr = malloc(sizeof(char));
+                char *arr = (char*)malloc(sizeof(char));
                 int k = 0;
                 for (char *par = va_arg(arg, char *); *par; par++) {
                     if (tok.toch <= k && tok.toch > 0) continue;
@@ -406,10 +439,29 @@ int main() {
     char str[400];
     char str2[400];
     int a, b;
-    a = s21_sprintf(str, "%d %d %d %d %d %ld %ld", INT_MIN, INT_MAX, SHRT_MAX,
-                SHRT_MIN, USHRT_MAX, LONG_MAX, LONG_MIN);
+
+    //*******************************************************************************************//
+                                    // INT TEST //
+
+    a = s21_sprintf(str, "%d %d %d %d %d %ld %ld", INT_MIN, INT_MAX, SHRT_MAX,         //  По
+                    SHRT_MIN, USHRT_MAX, LONG_MAX, LONG_MIN);
     b = sprintf(str2, "%d %d %d %d %d %ld %ld", INT_MIN, INT_MAX, SHRT_MAX, SHRT_MIN,
-            USHRT_MAX, LONG_MAX, LONG_MIN);
+                USHRT_MAX, LONG_MAX, LONG_MIN);
+
+    //******************************************************************************************//
+                                    // CHAR* TEST //
+
+//    a = s21_sprintf(str, "%s %10s %-10s %-3s %.s %.3s %.10s", "hello", "hello",    // Починил
+//    "hello", "hello", "hello", "hello", "hello");
+//    b = sprintf(str2, "%s %10s %-10s %-3s %.s %.3s %.10s", "hello", "hello", "hello",
+//            "hello", "hello", "hello", "hello");
+
+//    a  = s21_sprintf(str, "%ls %10ls %-10ls %-3ls %.ls %.3ls %.10ls", L"hello",
+//                L"hello", L"hello", L"hello", L"hello", L"hello", L"hello");
+//    b = sprintf(str2, "%ls %10ls %-10ls %-3ls %.ls %.3ls %.10ls", L"hello", L"hello",
+//            L"hello", L"hello", L"hello", L"hello", L"hello");
+
+    //******************************************************************************************//
     printf("%s\n%d\n", str, a);
     printf("ORIGIN\n%s\n%d", str2, b);
     return 0;
